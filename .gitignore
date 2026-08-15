@@ -1,0 +1,9 @@
+# Ignore test, temporary, and log files
+scratch/
+*.log
+*.tmp
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+node_modules/
+.env*
