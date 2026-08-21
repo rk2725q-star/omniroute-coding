@@ -2,12 +2,13 @@
   "env": {
     "ANTHROPIC_BASE_URL": "http://localhost:20128",
     "ANTHROPIC_AUTH_TOKEN": "omniroute",
-    "ANTHROPIC_MODEL": "gemini/gemini-3.5-flash-lite",
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": "gemini/gemini-3.7-flash",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "gemini/gemini-3.1-pro",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "gemini/gemini-3.5-flash-lite",
-    "ANTHROPIC_SMALL_FAST_MODEL": "gemini/gemini-3.5-flash-lite",
+    "ANTHROPIC_MODEL": "free coding 2",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "free coding 2",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "nvidia free",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "free code",
+    "ANTHROPIC_SMALL_FAST_MODEL": "gemini-fallback",
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+    "CLAUDE_CODE_DISABLE_UNKNOWN_MODEL_WINDOW_ENFORCEMENT": "1",
     "DISABLE_AUTOUPDATER": "1"
   }
 }
