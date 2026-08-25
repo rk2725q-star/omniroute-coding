@@ -183,8 +183,10 @@ return response;
         },
         "nvidia free": {
             "strategy": "auto",
-            "mode_pack": "quality_first",
-            "preset": "quality_first",
+            "mode_pack": "Quality First",
+            "router_strategy": "Rules (6-Factor Scoring)",
+            "exploration_rate": 0.05,
+            "budget_cap": None,
             "models": [
                 make_entry("nvidia/nvidia/nemotron-3-ultra-550b-a55b", "nvidia"),
                 make_entry("nvidia/moonshotai/kimi-k3", "nvidia"),
@@ -215,11 +217,27 @@ return response;
         }
         if "mode_pack" in cinfo:
             combo_data["mode_pack"] = cinfo["mode_pack"]
-            combo_data["preset"] = cinfo.get("preset", "quality_first")
+            combo_data["modePack"] = cinfo["mode_pack"]
+            combo_data["router_strategy"] = cinfo.get("router_strategy", "Rules (6-Factor Scoring)")
+            combo_data["routerStrategy"] = cinfo.get("router_strategy", "Rules (6-Factor Scoring)")
+            combo_data["exploration_rate"] = cinfo.get("exploration_rate", 0.05)
+            combo_data["explorationRate"] = cinfo.get("exploration_rate", 0.05)
+            combo_data["budget_cap"] = cinfo.get("budget_cap", None)
+            combo_data["budgetCap"] = cinfo.get("budget_cap", None)
+            combo_data["candidate_pool"] = []
+            combo_data["candidatePool"] = []
             combo_data["smart_routing"] = {
-                "preset": cinfo.get("preset", "quality_first"),
-                "mode": cinfo.get("mode_pack", "quality_first"),
-                "preference": "quality"
+                "mode_pack": cinfo["mode_pack"],
+                "modePack": cinfo["mode_pack"],
+                "router_strategy": cinfo.get("router_strategy", "Rules (6-Factor Scoring)"),
+                "routerStrategy": cinfo.get("router_strategy", "Rules (6-Factor Scoring)"),
+                "exploration_rate": cinfo.get("exploration_rate", 0.05),
+                "explorationRate": cinfo.get("exploration_rate", 0.05),
+                "budget_cap": cinfo.get("budget_cap", None),
+                "budgetCap": cinfo.get("budget_cap", None),
+                "candidate_pool": [],
+                "candidatePool": [],
+                "preset": "quality_first"
             }
         cur.execute("DELETE FROM combos WHERE name=?", (name,))
         cur.execute("""
