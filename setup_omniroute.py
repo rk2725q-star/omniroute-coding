@@ -185,6 +185,7 @@ return response;
             "strategy": "fallback",
             "models": [
                 make_entry("nvidia/nvidia/nemotron-3-ultra-550b-a55b", "nvidia"),
+                make_entry("nvidia/moonshotai/kimi-k3", "nvidia"),
                 make_entry("nvidia/nvidia/nemotron-3.5-lightning-30b-a3b", "nvidia"),
                 make_entry("nvidia/minimaxai/minimax-m3", "nvidia"),
                 make_entry("nvidia/nvidia/nemotron-3-super-120b-a12b", "nvidia"),

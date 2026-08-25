@@ -96,9 +96,10 @@ OmniRoute-ல் நாம் 4 பிரத்யேக Combos உருவா�
 * **Strategy:** `Sequential Fallback`
 * **Models வரிசை (Confirmed Live & Working):**
   1. `nvidia/nvidia/nemotron-3-ultra-550b-a55b` *(550 Billion Parameter Ultra Beast 🔥)*
-  2. `nvidia/nvidia/nemotron-3.5-lightning-30b-a3b` *(2.9s Lightning Fast ⚡)*
-  3. `nvidia/minimaxai/minimax-m3` *(High Quality Context reasoning)*
-  4. `nvidia/nvidia/nemotron-3-super-120b-a12b` *(120 Billion Parameter Model)*
+  2. `nvidia/moonshotai/kimi-k3` *(Moonshot Kimi K3 High Intelligence)*
+  3. `nvidia/nvidia/nemotron-3.5-lightning-30b-a3b` *(2.9s Lightning Fast ⚡)*
+  4. `nvidia/minimaxai/minimax-m3` *(High Quality Context reasoning)*
+  5. `nvidia/nvidia/nemotron-3-super-120b-a12b` *(120 Billion Parameter Model)*
 * **Role in Claude Code:** `ANTHROPIC_DEFAULT_OPUS_MODEL`
 * **பயன்பாடு:** Deep Architecture planning, Security audits, Complex Refactoring, மற்றும் System Design.
 
