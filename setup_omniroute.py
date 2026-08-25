@@ -182,7 +182,9 @@ return response;
             ]
         },
         "nvidia free": {
-            "strategy": "fallback",
+            "strategy": "auto",
+            "mode_pack": "quality_first",
+            "preset": "quality_first",
             "models": [
                 make_entry("nvidia/nvidia/nemotron-3-ultra-550b-a55b", "nvidia"),
                 make_entry("nvidia/moonshotai/kimi-k3", "nvidia"),
@@ -211,6 +213,14 @@ return response;
             "models": cinfo["models"],
             "capabilities": {"multimodal": False, "reasoning": False, "caching": False}
         }
+        if "mode_pack" in cinfo:
+            combo_data["mode_pack"] = cinfo["mode_pack"]
+            combo_data["preset"] = cinfo.get("preset", "quality_first")
+            combo_data["smart_routing"] = {
+                "preset": cinfo.get("preset", "quality_first"),
+                "mode": cinfo.get("mode_pack", "quality_first"),
+                "preference": "quality"
+            }
         cur.execute("DELETE FROM combos WHERE name=?", (name,))
         cur.execute("""
             INSERT INTO combos (id, name, data, sort_order, created_at, updated_at, system_message, tool_filter_regex, context_cache_protection)

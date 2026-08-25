@@ -93,7 +93,7 @@ OmniRoute-ல் நாம் 4 பிரத்யேக Combos உருவா�
 ---
 
 ### 2️⃣ Combo: `nvidia free` (Opus Reasoning Equivalent)
-* **Strategy:** `Sequential Fallback`
+* **Strategy:** `Intelligent Auto` (Smart Routing Mode Pack: `Quality First`)
 * **Models வரிசை (Confirmed Live & Working):**
   1. `nvidia/nvidia/nemotron-3-ultra-550b-a55b` *(550 Billion Parameter Ultra Beast 🔥)*
   2. `nvidia/moonshotai/kimi-k3` *(Moonshot Kimi K3 High Intelligence)*
