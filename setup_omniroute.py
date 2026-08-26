@@ -195,6 +195,17 @@ return response;
                 make_entry("nvidia/nvidia/nemotron-3-super-120b-a12b", "nvidia"),
             ]
         },
+        "top code": {
+            "strategy": "auto",
+            "models": [
+                make_entry("nvidia/moonshotai/kimi-k3", "nvidia"),
+                make_entry("nvidia/minimaxai/minimax-m3", "nvidia"),
+                make_entry("nvidia/nvidia/nemotron-3-ultra-550b-a55b", "nvidia"),
+                make_entry("openrouter/nvidia/nemotron-3-ultra-550b-a55b:free-high", "openrouter"),
+                make_entry("opencode/nemotron-3-ultra-free", "opencode"),
+                make_entry("openrouter/nvidia/nemotron-3-ultra-550b-a55b:free-medium", "openrouter"),
+            ]
+        },
         "free code": {
             "strategy": "fallback",
             "models": [
@@ -244,7 +255,7 @@ return response;
             INSERT INTO combos (id, name, data, sort_order, created_at, updated_at, system_message, tool_filter_regex, context_cache_protection)
             VALUES (?, ?, ?, 0, ?, ?, NULL, NULL, 0)
         """, (name, name, json.dumps(combo_data), NOW, NOW))
-    log("All 4 combos created with correct Object Array schema", "✅")
+    log("All 5 combos created with correct Object Array schema", "✅")
 
     # 6. Model Combo Mappings
     cur.execute("DELETE FROM model_combo_mappings")
@@ -253,7 +264,7 @@ return response;
         ("auto", "free coding 2", 100),
         ("claude-sonnet-4-6", "free coding 2", 100),
         ("claude-opus-4-5", "nvidia free", 90),
-        ("claude-haiku-4-5", "gemini-fallback", 80),
+        ("claude-haiku-4-5", "top code", 80),
     ]
     for pattern, combo_name, priority in mapping_rules:
         mid = str(uuid.uuid4())
@@ -266,12 +277,13 @@ return response;
 
     # 7. Cross-Combo Fallback Chains
     CROSS_CHAINS = {
-        "free coding 2": ["free coding 2", "gemini-fallback", "nvidia free", "free code", "gemini/gemini-3.5-flash-lite"],
-        "nvidia free": ["nvidia free", "free coding 2", "gemini-fallback", "free code", "gemini/gemini-3.5-flash-lite"],
-        "gemini-fallback": ["gemini-fallback", "free coding 2", "free code", "nvidia free", "gemini/gemini-3.5-flash-lite"],
-        "free code": ["free code", "free coding 2", "gemini-fallback", "nvidia free", "gemini/gemini-3.5-flash-lite"],
-        "auto/best-free": ["free coding 2", "gemini-fallback", "nvidia free", "gemini/gemini-3.5-flash-lite"],
-        "auto": ["free coding 2", "gemini-fallback", "nvidia free", "gemini/gemini-3.5-flash-lite"],
+        "free coding 2": ["free coding 2", "top code", "nvidia free", "gemini-fallback", "free code", "gemini/gemini-3.5-flash-lite"],
+        "nvidia free": ["nvidia free", "top code", "free coding 2", "gemini-fallback", "free code", "gemini/gemini-3.5-flash-lite"],
+        "top code": ["top code", "free coding 2", "nvidia free", "gemini-fallback", "free code", "gemini/gemini-3.5-flash-lite"],
+        "gemini-fallback": ["gemini-fallback", "top code", "free coding 2", "nvidia free", "free code", "gemini/gemini-3.5-flash-lite"],
+        "free code": ["free code", "top code", "free coding 2", "gemini-fallback", "nvidia free", "gemini/gemini-3.5-flash-lite"],
+        "auto/best-free": ["free coding 2", "top code", "nvidia free", "gemini/gemini-3.5-flash-lite"],
+        "auto": ["free coding 2", "top code", "nvidia free", "gemini/gemini-3.5-flash-lite"],
     }
     cur.execute("DELETE FROM domain_fallback_chains")
     for model_key, chain in CROSS_CHAINS.items():
@@ -284,6 +296,7 @@ return response;
         ("gemini/gemini-3.5-flash-lite", 2800, "best"),
         ("gemini/gemini-3.1-flash-lite", 2700, "best"),
         ("nvidia/nvidia/nemotron-3-ultra-550b-a55b", 2650, "best"),
+        ("nvidia/moonshotai/kimi-k3", 2600, "best"),
         ("gemini/gemini-3.5-flash", 2500, "good"),
         ("nvidia/nvidia/nemotron-3.5-lightning-30b-a3b", 2400, "good"),
         ("gemini/gemini-3.6-flash", 2200, "good"),
@@ -291,7 +304,7 @@ return response;
         ("gemini/gemini-3.1-pro-preview", 2000, "good"),
     ]
     for m, elo, cat in models_elo:
-        for k in [m, m.replace("gemini/", "").replace("nvidia/", "")]:
+        for k in [m, m.replace("gemini/", "").replace("nvidia/", "").replace("moonshotai/", "")]:
             cur.execute("""
                 INSERT OR REPLACE INTO model_intelligence
                 (model, source, category, score, elo_raw, confidence, synced_at, expires_at)
@@ -311,8 +324,8 @@ def sync_settings_files():
             "ANTHROPIC_MODEL": "free coding 2",
             "ANTHROPIC_DEFAULT_SONNET_MODEL": "free coding 2",
             "ANTHROPIC_DEFAULT_OPUS_MODEL": "nvidia free",
-            "ANTHROPIC_DEFAULT_HAIKU_MODEL": "gemini-fallback",
-            "ANTHROPIC_SMALL_FAST_MODEL": "gemini-fallback",
+            "ANTHROPIC_DEFAULT_HAIKU_MODEL": "top code",
+            "ANTHROPIC_SMALL_FAST_MODEL": "top code",
             "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
             "CLAUDE_CODE_DISABLE_UNKNOWN_MODEL_WINDOW_ENFORCEMENT": "1",
             "DISABLE_AUTOUPDATER": "1"

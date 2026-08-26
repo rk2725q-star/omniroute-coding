@@ -69,13 +69,13 @@ OmniRoute-ல் நாம் 4 பிரத்யேக Combos உருவா�
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│                        4 ACTIVE COMBOS                                 │
+│                        5 ACTIVE COMBOS                                 │
 ├──────────────────────┬──────────────────────┬──────────────────────────┤
-│ 1. free coding 2     │ 2. nvidia free       │ 3. gemini-fallback       │
+│ 1. free coding 2     │ 2. nvidia free       │ 3. top code              │
 │ (Primary / Sonnet)   │ (Reasoning / Opus)   │ (Ultra-Fast / Haiku)     │
-├──────────────────────┴──────────────────────┴──────────────────────────┤
-│ 4. free code (OpenCode Suite Backup)                                   │
-└────────────────────────────────────────────────────────────────────────┘
+├──────────────────────┼──────────────────────┴──────────────────────────┤
+│ 4. gemini-fallback   │ 5. free code (OpenCode Suite Backup)            │
+└──────────────────────┴─────────────────────────────────────────────────┘
 ```
 
 ### 1️⃣ Combo: `free coding 2` (Primary Sonnet Equivalent)
@@ -110,7 +110,21 @@ OmniRoute-ல் நாம் 4 பிரத்யேக Combos உருவா�
 
 ---
 
-### 3️⃣ Combo: `gemini-fallback` (Haiku / Fast Tasks)
+### 3️⃣ Combo: `top code` (Haiku / Fast Tasks / Top Intelligence)
+* **Strategy:** `Intelligent Auto`
+* **Models வரிசை:**
+  1. `nvidia/moonshotai/kimi-k3` *(Kimi K3 Ultra Intelligence)*
+  2. `nvidia/minimaxai/minimax-m3` *(MiniMax M3 Reasoning)*
+  3. `nvidia/nvidia/nemotron-3-ultra-550b-a55b` *(550B Heavy Model)*
+  4. `openrouter/nvidia/nemotron-3-ultra-550b-a55b:free-high` *(OpenRouter Free High Tier)*
+  5. `opencode/nemotron-3-ultra-free` *(OpenCode Free Backup)*
+  6. `openrouter/nvidia/nemotron-3-ultra-550b-a55b:free-medium` *(OpenRouter Free Medium Tier)*
+* **Role in Claude Code:** `ANTHROPIC_DEFAULT_HAIKU_MODEL` & `ANTHROPIC_SMALL_FAST_MODEL`
+* **பயன்பாடு:** High intelligence sub-tasks, Quick lookups, File analysis, மற்றும் Fast tool operations.
+
+---
+
+### 4️⃣ Combo: `gemini-fallback` (Ultra-Fast Fallback Suite)
 * **Strategy:** `Sequential Fallback`
 * **Models வரிசை:**
   1. `gemini/gemini-3.5-flash-lite` *(2-3s Instant response)*
@@ -118,12 +132,11 @@ OmniRoute-ல் நாம் 4 பிரத்யேக Combos உருவா�
   3. `gemini/gemini-3.5-flash`
   4. `gemini/gemini-3.6-flash`
   5. `gemini/gemini-3.7-flash`
-* **Role in Claude Code:** `ANTHROPIC_DEFAULT_HAIKU_MODEL` & `ANTHROPIC_SMALL_FAST_MODEL`
-* **பயன்பாடு:** Quick lookups, Syntax checking, File searching, மற்றும் Small tool operations.
+* **பயன்பாடு:** Google Gemini dedicated fallback chain.
 
 ---
 
-### 4️⃣ Combo: `free code` (OpenCode Backup Suite)
+### 5️⃣ Combo: `free code` (OpenCode Backup Suite)
 * **Strategy:** `Sequential Fallback`
 * **Models வரிசை:**
   1. `oc/nemotron-3-ultra-free`
@@ -236,8 +249,8 @@ Located at `.claude/settings.json` (Workspace) and `~/.claude/settings.json` (Gl
     "ANTHROPIC_MODEL": "free coding 2",
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "free coding 2",
     "ANTHROPIC_DEFAULT_OPUS_MODEL": "nvidia free",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "gemini-fallback",
-    "ANTHROPIC_SMALL_FAST_MODEL": "gemini-fallback",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "top code",
+    "ANTHROPIC_SMALL_FAST_MODEL": "top code",
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
     "CLAUDE_CODE_DISABLE_UNKNOWN_MODEL_WINDOW_ENFORCEMENT": "1",
     "DISABLE_AUTOUPDATER": "1"
