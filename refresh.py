@@ -16,18 +16,30 @@ SETTINGS   = [
     r"c:\Users\manit\OneDrive\Desktop\omniroute\.claude\settings.example.json",
     os.path.expanduser(r"~\.claude\settings.json"),
 ]
+
+# All models across all providers — ordered by expected speed
 ALL_MODELS = [
-    "gemini/gemini-3.7-flash",
-    "gemini/gemini-3.6-flash",
-    "gemini/gemini-3.5-flash",
-    "gemini/gemini-3.5-flash-lite",
-    "gemini/gemini-3.1-flash-lite",
-    "gemini/gemini-3.1-flash-lite-preview",
-    "gemini/gemini-omni-flash-preview",
+    # Nvidia (usually fast when up)
+    ("nvidia/moonshotai/kimi-k3",                   "nvidia"),
+    ("nvidia/nvidia/nemotron-3.5-lightning-30b-a3b", "nvidia"),
+    ("nvidia/minimaxai/minimax-m3",                  "nvidia"),
+    ("nvidia/nvidia/nemotron-3-super-120b-a12b",     "nvidia"),
+    ("nvidia/nvidia/nemotron-3-ultra-550b-a55b",     "nvidia"),
+    # Gemini
+    ("gemini/gemini-3.5-flash-lite",                 "gemini"),
+    ("gemini/gemini-3.1-flash-lite",                 "gemini"),
+    ("gemini/gemini-3.5-flash",                      "gemini"),
+    ("gemini/gemini-3.6-flash",                      "gemini"),
+    ("gemini/gemini-3.7-flash",                      "gemini"),
+    ("gemini/gemini-3.1-flash-lite-preview",         "gemini"),
+    ("gemini/gemini-omni-flash-preview",             "gemini"),
+    # OpenCode
+    ("oc/nemotron-3-ultra-free",                     "opencode"),
 ]
 
-def test_model(model, timeout=12):
-    body = {"model": model, "max_tokens": 8,
+
+def test_model(model, timeout=8):
+    body = {"model": model, "max_tokens": 1,
             "messages": [{"role": "user", "content": "Say: OK"}]}
     req = urllib.request.Request(
         f"{OMNIROUTE}/v1/messages",
@@ -57,118 +69,180 @@ def run():
     print(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 60)
 
-    # 1. Live health check
-    print("\n[1/4] Live model health check...")
-    working, dead = [], []
-    for m in ALL_MODELS:
+    # 1. Live health check (all providers)
+    print("\n[1/4] Live model health check (all providers)...")
+    working_tuples, dead_tuples = [], []
+    for m, provider in ALL_MODELS:
         ok, actual, ms = test_model(m)
         tag = "✅" if ok else "❌"
-        print(f"  {tag} {m:45s} {ms:5.1f}s")
+        print(f"  {tag} {m:55s} {ms:5.2f}s")
         if ok:
-            working.append(m)
+            working_tuples.append((m, provider, ms))
         else:
-            dead.append(m)
+            dead_tuples.append((m, provider))
 
-    if not working:
-        print("\n⚠️  ALL MODELS DOWN — Gemini API outage. Try again later.")
+    if not working_tuples:
+        print("\n⚠️  ALL MODELS DOWN — check OmniRoute. Try again later.")
         return
 
+    # Sort working models by speed (fastest first)
+    working_tuples.sort(key=lambda x: x[2])
+    working = [m for m, p, ms in working_tuples]
+    dead    = [m for m, p in dead_tuples]
     primary = working[0]
-    fallback_chain = working + dead  # working first, dead as last resort
-
     print(f"\n  Working: {len(working)} | Dead: {len(dead)}")
-    print(f"  Primary: {primary}")
+    print(f"  🏎️  Fastest: {primary} ({working_tuples[0][2]}s)")
 
     # 2. Update DB
     print("\n[2/4] Updating OmniRoute database...")
     db = sqlite3.connect(DB_PATH)
     cur = db.cursor()
 
-    # model_intelligence ELO
+    def make_model_entry(m, p=None):
+        if p:
+            return {"kind": "model", "model": m, "providerId": p}
+        # Auto-detect provider from prefix
+        provider = m.split("/")[0] if "/" in m else "gemini"
+        if provider not in ("gemini", "nvidia", "openrouter", "opencode", "oc"):
+            provider = "nvidia" if "nvidia" in m or "kimi" in m or "minimax" in m else "gemini"
+        return {"kind": "model", "model": m, "providerId": provider}
+
+    # model_intelligence ELO — working sorted by speed
     cur.execute("DELETE FROM model_intelligence WHERE source='manual'")
-    for i, m in enumerate(fallback_chain):
-        elo = max(2800 - i * 200, 800)
-        cat = "best" if elo >= 2700 else "good" if elo >= 2000 else "fast"
-        for key in [m, m.replace("gemini/", "")]:
+    for i, (m, p, ms) in enumerate(working_tuples):
+        elo = max(2800 - i * 150, 1000)
+        cat = "best" if i < 2 else "good" if i < 5 else "fast"
+        for key in [m, m.split("/")[-1]]:
             cur.execute("""INSERT OR REPLACE INTO model_intelligence
                 (model, source, category, score, elo_raw, confidence, synced_at, expires_at)
                 VALUES (?, 'manual', ?, ?, ?, 1.0, ?, ?)""",
                 (key, cat, round(elo/2800, 3), elo, now, expires))
+    for m, p in dead_tuples:
+        for key in [m, m.split("/")[-1]]:
+            cur.execute("""INSERT OR REPLACE INTO model_intelligence
+                (model, source, category, score, elo_raw, confidence, synced_at, expires_at)
+                VALUES (?, 'manual', 'fast', 0.3, 800, 0.1, ?, ?)""",
+                (key, now, expires))
 
-    # domain_fallback_chains
-    chain_json = json.dumps(fallback_chain)
-    cur.execute("DELETE FROM domain_fallback_chains")
-    for ep in ["auto/best-free", "auto", "claude-sonnet-4-6",
-               "claude-opus-4-5", "claude-haiku-4-5"] + fallback_chain[:3]:
-        cur.execute("INSERT OR REPLACE INTO domain_fallback_chains (model,chain) VALUES (?,?)",
-                    (ep, chain_json))
+    # Build combos with working models sorted by speed
+    nvidia_w = [(m, p, ms) for m, p, ms in working_tuples if p == "nvidia"]
+    gemini_w = [(m, p, ms) for m, p, ms in working_tuples if p == "gemini"]
+    oc_w     = [(m, p, ms) for m, p, ms in working_tuples if p in ("opencode", "oc")]
+    nvidia_d = [(m, p) for m, p in dead_tuples if p == "nvidia"]
+    gemini_d = [(m, p) for m, p in dead_tuples if p == "gemini"]
+    oc_d     = [(m, p) for m, p in dead_tuples if p in ("opencode", "oc", "openrouter")]
 
-    # model aliases
-    cur.execute("DELETE FROM key_value WHERE namespace='modelAliases'")
-    alias_entries = [
-        ("auto/best-free",   f'"{primary}"'),
-        ("auto",             f'"{primary}"'),
-        ("claude-sonnet-4-6",f'"{primary}"'),
-        ("claude-opus-4-5",  f'"{working[min(1,len(working)-1)]}"'),
-        ("claude-haiku-4-5", f'"{working[-1]}"'),
-    ]
-    for m in fallback_chain[:8]:
-        short = m.replace("gemini/","")
-        alias_entries += [(m, f'"{m}"'), (short, f'"{m}"')]
-    for k, v in alias_entries:
-        cur.execute("INSERT OR REPLACE INTO key_value (namespace,key,value) VALUES ('modelAliases',?,?)", (k,v))
+    all_working_entries = [make_model_entry(m, p) for m, p, ms in working_tuples]
+    all_dead_entries    = [make_model_entry(m, p) for m, p in dead_tuples]
 
-    # combo - CORRECT OmniRoute format: models must be object array with kind/model/providerId
-    def make_model_entry(m):
-        provider = m.split("/")[0] if "/" in m else "gemini"
-        return {"kind": "model", "model": m, "providerId": provider}
+    combos_config = {
+        "free coding 2": {
+            "strategy": "auto",
+            "models": all_working_entries + all_dead_entries,
+        },
+        "nvidia free": {
+            "strategy": "auto",
+            "models": ([make_model_entry(m, p) for m, p, ms in nvidia_w] +
+                       [make_model_entry(m, p) for m, p in nvidia_d]) or (all_working_entries[:3]),
+            "smart": True,
+        },
+        "top code": {
+            "strategy": "auto",
+            "models": [
+                make_model_entry("nvidia/moonshotai/kimi-k3", "nvidia"),
+                make_model_entry("nvidia/minimaxai/minimax-m3", "nvidia"),
+                make_model_entry("nvidia/nvidia/nemotron-3-ultra-550b-a55b", "nvidia"),
+                make_model_entry("openrouter/nvidia/nemotron-3-ultra-550b-a55b:free-high", "openrouter"),
+                make_model_entry("opencode/nemotron-3-ultra-free", "opencode"),
+                make_model_entry("openrouter/nvidia/nemotron-3-ultra-550b-a55b:free-medium", "openrouter"),
+            ],
+        },
+        "gemini-fallback": {
+            "strategy": "fallback",
+            "models": ([make_model_entry(m, p) for m, p, ms in gemini_w] +
+                       [make_model_entry(m, p) for m, p in gemini_d]) or (all_working_entries[:5]),
+        },
+        "free code": {
+            "strategy": "fallback",
+            "models": ([make_model_entry(m, p) for m, p, ms in oc_w] +
+                       [make_model_entry(m, p) for m, p in oc_d]) or (all_working_entries[:5]),
+        },
+    }
 
-    combo_name = "gemini-fallback"
     cur.execute("DELETE FROM combos")
     cur.execute("DELETE FROM model_combo_mappings")
-    combo_data = {
-        "name": combo_name, "strategy": "fallback",
-        "models": [make_model_entry(m) for m in fallback_chain],
-        "capabilities": {"multimodal": False, "reasoning": False, "caching": False}
-    }
-    cur.execute("""INSERT INTO combos (id,name,data,sort_order,created_at,updated_at,system_message,tool_filter_regex,context_cache_protection)
-        VALUES (?,?,?,0,?,?,NULL,NULL,0)""",
-        (combo_name, combo_name, json.dumps(combo_data), now, now))
-    for pattern in ["auto/best-free","auto","claude-sonnet-4-6","claude-opus-4-5","claude-haiku-4-5"] + fallback_chain[:3]:
+    for cname, cinfo in combos_config.items():
+        cdata = {
+            "name": cname, "strategy": cinfo["strategy"],
+            "models": cinfo["models"],
+            "capabilities": {"multimodal": False, "reasoning": False, "caching": False}
+        }
+        if cinfo.get("smart"):
+            cdata.update({
+                "mode_pack": "Quality First", "modePack": "Quality First",
+                "router_strategy": "Rules (6-Factor Scoring)", "routerStrategy": "Rules (6-Factor Scoring)",
+                "exploration_rate": 0.05, "explorationRate": 0.05,
+                "smart_routing": {"mode_pack": "Quality First", "modePack": "Quality First",
+                                  "preset": "quality_first"}
+            })
+        cur.execute("""INSERT INTO combos (id,name,data,sort_order,created_at,updated_at,system_message,tool_filter_regex,context_cache_protection)
+            VALUES (?,?,?,0,?,?,NULL,NULL,0)""",
+            (cname, cname, json.dumps(cdata), now, now))
+
+    # Mappings
+    for pat, combo, pri in [
+        ("auto/best-free", "free coding 2", 100),
+        ("auto",           "free coding 2", 100),
+        ("claude-sonnet-4-6", "free coding 2", 100),
+        ("claude-opus-4-5",   "nvidia free", 90),
+        ("claude-haiku-4-5",  "top code", 90),
+    ]:
         mid = str(uuid.uuid4())
         cur.execute("""INSERT OR REPLACE INTO model_combo_mappings
             (id,pattern,combo_id,priority,enabled,description,created_at,updated_at)
-            VALUES (?,?,?,100,1,'Auto fallback chain',?,?)""",
-            (mid, pattern, combo_name, now, now))
+            VALUES (?,?,?,?,1,'Speed-sorted auto',?,?)""",
+            (mid, pat, combo, pri, now, now))
 
-    # all 6 keys health check model = most available working model
-    health_model = working[-1].replace("gemini/", "")  # lightest working model
-    cur.execute("""UPDATE provider_connections SET
-        default_model=?, consecutive_use_count=1,
-        test_status='ok', last_error=NULL, last_error_at=NULL,
-        backoff_level=0, rate_limited_until=NULL
-        WHERE provider='gemini'""", (health_model,))
+    # Fallback chains — working combos first
+    chain = ["free coding 2", "top code", "nvidia free", "gemini-fallback", "free code"]
+    cur.execute("DELETE FROM domain_fallback_chains")
+    for key in chain + ["auto", "auto/best-free", "claude-sonnet-4-6", "claude-opus-4-5", "claude-haiku-4-5"]:
+        cur.execute("INSERT OR REPLACE INTO domain_fallback_chains (model,chain) VALUES (?,?)",
+                    (key, json.dumps(chain)))
+
+    # Update gemini provider health
+    if gemini_w:
+        health_model = gemini_w[0][0].replace("gemini/", "")
+        cur.execute("""UPDATE provider_connections SET
+            default_model=?, consecutive_use_count=1,
+            test_status='ok', last_error=NULL, last_error_at=NULL,
+            backoff_level=0, rate_limited_until=NULL
+            WHERE provider='gemini'""", (health_model,))
 
     db.commit()
     db.close()
-    print(f"  ✅ DB updated: ELO, chain, aliases, combo, health_check_model={health_model}")
+    print(f"  ✅ DB updated: {len(working)} working models, speed-sorted")
 
-    # 3. Update settings.json
+    # 3. Update settings.json — use combos, not raw models
     print("\n[3/4] Updating settings.json files...")
+    # Smart primary: use fastest working combo
+    primary_combo = "top code" if nvidia_w and not gemini_w else "free coding 2"
+
     settings = {"env": {
         "ANTHROPIC_BASE_URL": "http://localhost:20128",
         "ANTHROPIC_AUTH_TOKEN": "omniroute",
-        "ANTHROPIC_MODEL": primary,
-        "ANTHROPIC_DEFAULT_SONNET_MODEL": primary,
-        "ANTHROPIC_DEFAULT_OPUS_MODEL": working[min(1,len(working)-1)],
-        "ANTHROPIC_DEFAULT_HAIKU_MODEL": working[-1],
-        "ANTHROPIC_SMALL_FAST_MODEL": working[-1],
+        "ANTHROPIC_MODEL":                primary_combo,
+        "ANTHROPIC_DEFAULT_SONNET_MODEL": primary_combo,
+        "ANTHROPIC_DEFAULT_OPUS_MODEL":   "nvidia free",
+        "ANTHROPIC_DEFAULT_HAIKU_MODEL":  "top code",
+        "ANTHROPIC_SMALL_FAST_MODEL":     "top code",
         "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
         "CLAUDE_CODE_DISABLE_UNKNOWN_MODEL_WINDOW_ENFORCEMENT": "1",
         "DISABLE_AUTOUPDATER": "1"
     }}
     for p in SETTINGS:
         try:
+            os.makedirs(os.path.dirname(p), exist_ok=True)
             with open(p, "w", encoding="utf-8") as f:
                 json.dump(settings, f, indent=2)
             print(f"  ✅ {p}")
@@ -177,13 +251,16 @@ def run():
 
     # 4. Summary
     print("\n[4/4] Summary")
-    print(f"\n  Primary model: {primary}")
-    print(f"\n  Fallback chain:")
-    for i, m in enumerate(fallback_chain):
-        tag = "✅ working" if m in working else "❌ down (last resort)"
-        print(f"    {i+1}. {m} — {tag}")
+    print(f"\n  🏎️  Primary combo:  {primary_combo}")
+    print(f"  📊  Opus combo:     nvidia free")
+    print(f"  ⚡  Haiku combo:    top code")
+    print(f"\n  Live model ranking (fastest → slowest):")
+    for i, (m, p, ms) in enumerate(working_tuples[:6]):
+        print(f"    #{i+1} {m:55s} {ms:.2f}s")
+    if dead:
+        print(f"\n  Down ({len(dead)}): {', '.join(d.split('/')[-1] for d in dead[:4])}...")
 
-    print(f"\n✅ Done! Restart OmniRoute + Claude Code to apply.\n")
+    print(f"\n✅ Done! Restart Claude Code to apply changes.\n")
 
 if __name__ == "__main__":
     run()
