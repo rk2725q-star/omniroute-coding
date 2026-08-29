@@ -2,8 +2,8 @@
   "env": {
     "ANTHROPIC_BASE_URL": "http://localhost:20128",
     "ANTHROPIC_AUTH_TOKEN": "omniroute",
-    "ANTHROPIC_MODEL": "Top coding",
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": "Top coding",
+    "ANTHROPIC_MODEL": "Antigravity",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "Antigravity",
     "ANTHROPIC_DEFAULT_OPUS_MODEL": "Top coding",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "Top coding",
     "ANTHROPIC_SMALL_FAST_MODEL": "Top coding",
