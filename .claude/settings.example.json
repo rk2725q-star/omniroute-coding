@@ -4,7 +4,7 @@
     "ANTHROPIC_AUTH_TOKEN": "omniroute",
     "ANTHROPIC_MODEL": "Antigravity",
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "Antigravity",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "Antigravity",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "auto/claude-opus",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "Antigravity",
     "ANTHROPIC_SMALL_FAST_MODEL": "Antigravity",
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
